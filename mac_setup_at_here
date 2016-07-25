@@ -1,0 +1,159 @@
+ssh keys (git, hosts, snc)
+  use no passphrase on your ssh key:
+    in running vagrant boxes on our laptops, we run chef recipes which hit apt, snc, and git repos.  Those recipes expect to be able to load unpassphrased ssh keys with which to access the repos.
+  laptop> ssh-keygen -t rsa -C "<username> laptop" -b 4096 
+  cat ~/.ssh/id_rsa.pub 
+  ## put key to github
+  ## put key to https://source-americas.it.here.com/users/2560/ssh_keys
+  ## when the time comes, put pub key to appropriate chef repos  (for example, to ros-capture, to log on to T3)
+  ## when the time comes, put key to ros-capture repo and update .gitignore:
+  **   cd repos/ros-capture/chef
+  **   mkdir -p files/default/root/.ssh/
+  **   copy or hard link:
+  **   ln /Users/sgipe/.ssh/id_rsa files/default/root/ssh/id_rsa
+  ##   iff necessary, repeat for chef/templates/default/earthmine/ssh/auth keys
+
+~/.ssh/config 
+  Host *
+    SendEnv GIT*
+    ## SendEnv GITHUB_TOKEN
+    ## SendEnv *
+
+  Host fleetvision-web-*
+    HostName %h.rcp-p.solo-experiments.com
+    User ubuntu
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/rcp-utility.pem
+
+create github "Personal Access Token" (github: settings) and edit: select scope  "repo ( Full control of private repositories)"
+add it to your bashrc (or similar): export GITHUB_TOKEN=<REDACTED>
+
+Repos live in 2 places:
+  github.com/earthmine
+  snc: source-americas.it.here.com/capture-control/git/
+clone git repos
+  mkdir ~/repos && cd ~/repos
+  git clone git@github.com:earthmine/ros-capture.git
+  ... etc ...
+
+https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup
+cat ~/.gitconfig 
+  # This is Git's per-user configuration file.
+  [user]
+  # Please adapt and uncomment the following lines:
+  #	name = Sam Gipe
+  #	email = samuel.gipe@here.com
+
+Setup and successfully use:
+  chat: hipchat
+  vpn 
+  create aws user
+
+bookmark these exact links: 
+  https://rcp-p.signin.aws.amazon.com/console
+  https://rcp-rd.signin.aws.amazon.com/console
+  https://rcp-capsys-p.signin.aws.amazon.com/console
+  https://rcp-capsys-dev.signin.aws.amazon.com/console
+
+generate IAM tokens on each rcp aws account
+run 'aws configure' or populate the relevant conf files, using the above IAM tokens
+## populate .ssh/aws-keys 
+aws: create cross account role
+  The following allows you to log in to rcp-capsys-p, and then to any rcp aws account
+  get account Id from rcp-capsys-p(*) (upper right "user@..." ==> My Account)
+  get account Id for each aws account
+  In each account, create new role (IAM): 
+    Name (example): sgipe-xa 
+    Select "Role for Cross-Account Access"
+    specify  rcp-capsys-p Account Id
+    no MFA (defeats purpose, no additional security)
+  In rcp-capsys-p, "switch role" (upper right "user@...")
+    repeat 3 more times, updating fields to use a new account each time
+set up aws cli tab completion (see above or http://docs.aws.amazon.com/cli/latest/userguide/cli-command-completion.html)
+mac: install JetClock or UTCMenuClock, so you always have a UTC+0 display
+
+install homebrew: http://brew.sh/ 
+install cask: brew tap caskroom/cask 
+install the following via brew (not all of which are required)
+brew list | cat
+  auto-scaling
+  aws-cfn-tools
+  aws-elasticache
+  aws-elasticbeanstalk
+  aws-shell
+  aws-sns-cli
+  awscli
+  bison
+  brew-cask
+  cloud-watch
+  ec2-ami-tools
+  ec2-api-tools
+  elb-tools
+  jq
+  md5sha1sum
+  openssl
+  rds-command-line-tools
+  wget
+
+cask:
+  chefdk  ## alternately: http://docs.getchef.com/install_dk.html
+  java
+  vagrant
+  vagrant-manager   
+  virtualbox
+
+## awscli: done via brew.  previously done via "sudo easy_install pip; sudo pip install awscli"
+
+pip install --upgrade pip
+## aws sdk for python
+pip install boto
+pip install boto3
+
+peruse others' shared shell profiles for useful tidbits:
+ssh://snc@source-americas.it.here.com/capture-control/git/dev-profiles-and-configs
+
+## Stuff below might be very specific to devops
+
+keys in ~/.ssh/
+  capSysSoftDev.pem
+  component_tracker.key
+  fleet-support-tool-git-crypt.key
+  fleet-vision-git-crypt.key
+  fvd_git_crypt.key
+  id_rsa
+  id_rsa.pub
+  rcp-utility.pem
+  rcp.ext.here.com.crt
+  rcp.ext.here.com.key
+  ros-capture_git_crypt.key
+  spotcam.pem
+
+example> ssh -i ~/.ssh/rcp-utility.pem ubuntu@ht-builder-armhf.ad.navteq.com
+
+add your pubkey to repo user's authorized_keys on ht-repository.updates.emrcp.net:
+  chmod 600 ~/.ssh/rcp-utility.pem 
+  ssh -i ~/.ssh/rcp-utility.pem ubuntu@ht-repository.updates.emrcp.net
+  vi ~repo/.ssh/authorized_keys 
+
+building ros-capture VM:
+/Users/sgipe/repos/ros-capture/chef/attributes
+  git-crypt unlock ~/.ssh/ros-capture_git_crypt.key 
+  git-crypt status ##  not "smudge"
+  git-crypt status | grep -v \^not
+    encrypted: default.rb
+follow instructions in ros-capture/chef/README.md 
+review /Users/sgipe/repos/ros-capture/chef/Vagrantfile
+
+1usmsgipe:debs sgipe$ make build_vm
+
+run a ubuntu 12.X VM for testing networking commands, etc
+
+vagrant: 
+  ask if there's a common/shared vagrant file for common local configurations 
+  Here: each repo often has a Vagrantfile for common configuration
+ 
+from README: 
+  ## Test Kitchen Requirements ##
+  You must obtain the CBX id_rsa for the root user and place it
+  in `files/default/root/ssh/id_rsa`.
+
